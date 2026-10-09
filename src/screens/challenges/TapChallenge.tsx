@@ -7,7 +7,7 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+// import * as Haptics from 'expo-haptics';
 import { generateTapTargets, getDifficultyConfig } from '../../utils/helpers';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -39,11 +39,11 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
   }, [currentIndex, startPulse]);
 
   const handleTapTarget = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     pulseAnim.stopAnimation();
     const next = currentIndex + 1;
     if (next >= targets.length) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onComplete();
     } else {
       setCurrentIndex(next);
@@ -51,7 +51,7 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
   };
 
   const handleWrongTap = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     Animated.sequence([
       Animated.timing(wrongFlash, { toValue: 1, duration: 150, useNativeDriver: false }),
       Animated.timing(wrongFlash, { toValue: 0, duration: 150, useNativeDriver: false }),

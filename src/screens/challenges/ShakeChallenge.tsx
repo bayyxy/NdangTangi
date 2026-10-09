@@ -6,7 +6,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+// import * as Haptics from 'expo-haptics';
 import { useShakeDetector } from '../../hooks/useShakeDetector';
 import { getDifficultyConfig } from '../../utils/helpers';
 
@@ -73,7 +73,7 @@ export default function ShakeChallenge({ difficulty, onComplete }: Props) {
           const next = prev + 0.1;
           if (next >= total) {
             clearInterval(intervalRef.current!);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             onComplete();
             return total;
           }

@@ -106,11 +106,11 @@ export default function AddAlarmScreen() {
           </View>
           <Text style={styles.timeSep}>:</Text>
           <View style={styles.timeColumn}>
-            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustMinute(5)}>
+            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustMinute(1)}>
               <Text style={styles.timeBtnText}>▲</Text>
             </TouchableOpacity>
             <Text style={styles.timeValue}>{String(minute).padStart(2, '0')}</Text>
-            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustMinute(-5)}>
+            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustMinute(-1)}>
               <Text style={styles.timeBtnText}>▼</Text>
             </TouchableOpacity>
           </View>

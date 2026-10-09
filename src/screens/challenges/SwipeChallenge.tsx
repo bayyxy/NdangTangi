@@ -7,7 +7,7 @@ import {
   PanResponder,
   Animated,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+// import * as Haptics from 'expo-haptics';
 import { SwipeDirection } from '../../types/alarm';
 import { generateSwipePattern, getDifficultyConfig } from '../../utils/helpers';
 
@@ -42,7 +42,7 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const triggerWrong = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     setFailed(true);
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 15, duration: 60, useNativeDriver: true }),
@@ -74,10 +74,10 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
 
       const expected = pattern[currentIndex];
       if (detected === expected) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const next = currentIndex + 1;
         if (next >= pattern.length) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           onComplete();
         } else {
           setCurrentIndex(next);
@@ -89,7 +89,6 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
   });
 
   const current = pattern[currentIndex];
-  const progress = currentIndex / pattern.length;
 
   return (
     <View style={styles.container}>

@@ -7,7 +7,7 @@ import {
   BackHandler,
   StatusBar,
 } from 'react-native';
-import { useKeepAwake } from 'expo-keep-awake';
+// import { useKeepAwake } from 'expo-keep-awake';
 import { useAlarmStore } from '../store/alarmStore';
 import { AudioService } from '../services/AudioService';
 import TapChallenge from './challenges/TapChallenge';
@@ -16,7 +16,7 @@ import ShakeChallenge from './challenges/ShakeChallenge';
 import { formatTime } from '../utils/helpers';
 
 export default function AlarmRingingScreen() {
-  useKeepAwake();
+  // useKeepAwake();
   const { activeAlarm, alarms, setActiveAlarm, toggleAlarm } = useAlarmStore();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
