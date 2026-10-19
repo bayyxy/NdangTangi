@@ -14,6 +14,7 @@ interface AlarmState {
   removeAlarm: (id: string) => Promise<void>;
   toggleAlarm: (id: string) => Promise<void>;
   setActiveAlarm: (active: ActiveAlarm | null) => Promise<void>;
+  snoozeAlarm: (id: string) => Promise<void>;
 }
 
 export const useAlarmStore = create<AlarmState>((set, get) => ({
@@ -63,5 +64,20 @@ export const useAlarmStore = create<AlarmState>((set, get) => ({
   setActiveAlarm: async (active) => {
     await AlarmStorage.setActiveAlarm(active);
     set({ activeAlarm: active });
+  },
+
+  snoozeAlarm: async (id) => {
+    const alarm = get().alarms.find((a) => a.id === id);
+    if (!alarm) return;
+    const updated: Alarm = {
+      ...alarm,
+      snoozeCount: (alarm.snoozeCount || 0) + 1,
+    };
+    await AlarmStorage.upsert(updated);
+    await AlarmStorage.setActiveAlarm(null);
+    set((s) => ({
+      activeAlarm: null,
+      alarms: s.alarms.map((a) => (a.id === id ? updated : a)),
+    }));
   },
 }));
