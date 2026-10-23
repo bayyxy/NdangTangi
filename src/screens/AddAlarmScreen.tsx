@@ -39,6 +39,7 @@ const DIFFICULTIES = [
   { key: 'easy' as const, label: 'Mudah', color: '#16a34a' },
   { key: 'medium' as const, label: 'Sedang', color: '#f59e0b' },
   { key: 'hard' as const, label: 'Sulit', color: '#dc2626' },
+  { key: 'hard' as const, label: 'Sangat sulit', color: '#dc2626' }
 ];
 
 export default function AddAlarmScreen() {
@@ -213,12 +214,13 @@ export default function AddAlarmScreen() {
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveBtnText}>💾 Simpan Alarm</Text>
       </TouchableOpacity>
+      {/* File ini sudah digantikan oleh src/app/add-alarm.tsx */}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0a0a12' },
+  screen: { flex: 1, backgroundColor: '#31f40aff' },
   content: { padding: 20, paddingBottom: 40 },
   heading: {
     fontSize: 28,
@@ -227,7 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
-    backgroundColor: '#12121f',
+    backgroundColor: '#2b2be0ff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,

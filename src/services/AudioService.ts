@@ -4,7 +4,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ALARM_SOUND = require('../../assets/sounds/alarm.mp3');
 
-let soundObject: Audio.Sound | null = null;
+let soundObject: any = null;
 
 export const AudioService = {
   async play(): Promise<void> {
