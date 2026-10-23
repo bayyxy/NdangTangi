@@ -220,7 +220,7 @@ export default function AddAlarmScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#31f40aff' },
+  screen: { flex: 1, backgroundColor: '#0f0f1a' },
   content: { padding: 20, paddingBottom: 40 },
   heading: {
     fontSize: 28,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
-    backgroundColor: '#2b2be0ff',
+    backgroundColor: '#12121f',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
