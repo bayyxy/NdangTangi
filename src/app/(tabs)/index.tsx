@@ -195,6 +195,18 @@ export default function HomeScreen() {
         <Text style={styles.briefingArrow}>BUKA →</Text>
       </TouchableOpacity>
 
+      {/* Demo API Live Banner */}
+      <TouchableOpacity style={styles.briefingBanner} onPress={() => router.push('/api')} activeOpacity={0.8}>
+        <View style={styles.briefingLeft}>
+          <View style={[styles.briefingDot, { backgroundColor: '#3B82F6' }]} />
+          <View>
+            <Text style={[styles.briefingTag, { color: '#3B82F6' }]}>LIVE CODING TASK (MODUL 3)</Text>
+            <Text style={styles.briefingTitle}>Demo External API Call</Text>
+          </View>
+        </View>
+        <Text style={[styles.briefingArrow, { color: '#3B82F6' }]}>BUKA →</Text>
+      </TouchableOpacity>
+
       {/* Task Section */}
       <View style={styles.sectionHeaderRow}>
         <View>
@@ -250,11 +262,6 @@ export default function HomeScreen() {
           })}
         </View>
       )}
-
-      <View style={styles.footer}>
-        <Text style={styles.footerAuthor}>Bayu Adi Nugroho</Text>
-        <Text style={styles.footerNim}>NIM: 202410370110193</Text>
-      </View>
     </ScrollView>
   );
 }

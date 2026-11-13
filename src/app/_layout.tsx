@@ -84,6 +84,10 @@ export default function RootLayout() {
             name="briefing/[id]"
             options={{ title: 'Detail Kesiapan Pagi', headerBackTitle: 'Kembali' }}
           />
+          <Stack.Screen
+            name="api"
+            options={{ title: 'Demo API (Modul 3)', headerBackTitle: 'Kembali' }}
+          />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>
