@@ -1,6 +1,5 @@
-import 'react-native-gesture-handler';
-import React, { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import React, { useEffect, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Stack, router } from 'expo-router';
@@ -10,7 +9,6 @@ export default function RootLayout() {
   const { activeAlarm, setActiveAlarm, loadAlarms } = useAlarmStore();
   const lastTriggered = useRef<string>('');
 
-  // ─── useEffect: muat alarm & cek alarm tiap detik ───────────────────────────
   useEffect(() => {
     loadAlarms();
 
@@ -35,15 +33,12 @@ export default function RootLayout() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadAlarms, setActiveAlarm]);
 
-  // ─── useEffect: navigasi otomatis saat alarm aktif / selesai ─────────────────
   useEffect(() => {
     if (activeAlarm) {
-      // router.push() — mendorong halaman alarm ke atas stack
       router.push('/alarm-ringing');
     } else {
-      // router.replace() — ganti stack kembali ke home tanpa menyisakan history
       router.replace('/');
     }
   }, [activeAlarm]);
@@ -54,14 +49,13 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#0a0a12' },
-            headerTintColor: '#fff',
+            headerStyle: { backgroundColor: '#0B0C10' },
+            headerTintColor: '#FFFFFF',
             headerTitleStyle: { fontWeight: '800' },
-            contentStyle: { backgroundColor: '#0a0a12' },
+            contentStyle: { backgroundColor: '#0B0C10' },
             animation: 'slide_from_right',
           }}
         >
-          {/* Stack.Screen — mendefinisikan konfigurasi tiap rute */}
           <Stack.Screen
             name="index"
             options={{ headerShown: false }}
@@ -71,8 +65,24 @@ export default function RootLayout() {
             options={{ title: 'Atur Alarm', headerBackTitle: 'Kembali' }}
           />
           <Stack.Screen
+            name="add-task"
+            options={{ title: 'Tambah Agenda Tugas', headerBackTitle: 'Kembali' }}
+          />
+          <Stack.Screen
+            name="task/[id]"
+            options={{ title: 'Detail Agenda', headerBackTitle: 'Kembali' }}
+          />
+          <Stack.Screen
             name="alarm-ringing"
             options={{ headerShown: false, gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="briefing/index"
+            options={{ title: 'Briefing & Cuaca Pagi', headerBackTitle: 'Kembali' }}
+          />
+          <Stack.Screen
+            name="briefing/[id]"
+            options={{ title: 'Detail Kesiapan Pagi', headerBackTitle: 'Kembali' }}
           />
         </Stack>
       </SafeAreaProvider>

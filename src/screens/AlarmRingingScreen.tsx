@@ -5,8 +5,8 @@ import {
   StyleSheet,
   Animated,
   BackHandler,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 // import { useKeepAwake } from 'expo-keep-awake';
 import { useAlarmStore } from '../store/alarmStore';
 import { AudioService } from '../services/AudioService';
@@ -52,7 +52,7 @@ export default function AlarmRingingScreen() {
   }, [alarm, setActiveAlarm, toggleAlarm]);
 
   if (!alarm) {
-    // Fallback — dismiss if alarm not found
+    // Fallback: dismiss if alarm not found
     AudioService.stop();
     return null;
   }
@@ -62,7 +62,7 @@ export default function AlarmRingingScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f1a" />
+      <StatusBar style="light" />
 
       {/* Clock header */}
       <Animated.View style={[styles.clockSection, { transform: [{ scale: pulseAnim }] }]}>
