@@ -176,7 +176,7 @@ export default function AddAlarmScreen() {
         <View style={styles.diffRow}>
           {DIFFICULTIES.map((d) => (
             <TouchableOpacity
-              key={d.key}
+              key={d.label}
               style={[
                 styles.diffBtn,
                 challenge.difficulty === d.key && { backgroundColor: d.color },

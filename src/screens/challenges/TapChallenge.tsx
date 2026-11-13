@@ -7,11 +7,10 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-// import * as Haptics from 'expo-haptics';
 import { generateTapTargets, getDifficultyConfig } from '../../utils/helpers';
 
 const { width: W, height: H } = Dimensions.get('window');
-const TARGET_SIZE = 64;
+const TARGET_SIZE = 68;
 
 interface Props {
   difficulty: 'easy' | 'medium' | 'hard';
@@ -28,8 +27,8 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
   const startPulse = useCallback(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.3, duration: 500, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 450, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
       ])
     ).start();
   }, [pulseAnim]);
@@ -39,11 +38,9 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
   }, [currentIndex, startPulse]);
 
   const handleTapTarget = () => {
-    // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     pulseAnim.stopAnimation();
     const next = currentIndex + 1;
     if (next >= targets.length) {
-      // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onComplete();
     } else {
       setCurrentIndex(next);
@@ -51,12 +48,10 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
   };
 
   const handleWrongTap = () => {
-    // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     Animated.sequence([
-      Animated.timing(wrongFlash, { toValue: 1, duration: 150, useNativeDriver: false }),
-      Animated.timing(wrongFlash, { toValue: 0, duration: 150, useNativeDriver: false }),
+      Animated.timing(wrongFlash, { toValue: 1, duration: 120, useNativeDriver: false }),
+      Animated.timing(wrongFlash, { toValue: 0, duration: 120, useNativeDriver: false }),
     ]).start();
-    // Reset
     setTargets(generateTapTargets(config.tapCount));
     setCurrentIndex(0);
   };
@@ -66,37 +61,39 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
 
   const bgColor = wrongFlash.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#0f0f1a', '#3d0000'],
+    outputRange: ['#0B0C10', '#3D0D14'],
   });
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* Header */}
+      {/* Header Tantangan */}
       <View style={styles.header}>
-        <Text style={styles.title}>🎯 Ketuk Target!</Text>
+        <Text style={styles.missionTag}>MISI: KETUK TARGET ACAK</Text>
+        <Text style={styles.counterText}>
+          {currentIndex} / {targets.length} Target
+        </Text>
         <Text style={styles.subtitle}>
-          {currentIndex}/{targets.length} tapped
+          Ketuk lingkaran oranye yang berkedip di layar
         </Text>
       </View>
 
       {/* Progress Bar */}
-      <View style={styles.progressBar}>
+      <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
       </View>
 
-      {/* Tap Area */}
+      {/* Area Tap Layar */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={handleWrongTap}
         style={styles.tapArea}
       >
-        {/* Current Target */}
         <Animated.View
           style={[
             styles.target,
             {
-              left: (current.x / 100) * (W - TARGET_SIZE),
-              top: (current.y / 100) * (H * 0.55 - TARGET_SIZE),
+              left: (current.x / 100) * (W - TARGET_SIZE - 32),
+              top: (current.y / 100) * (H * 0.45),
               transform: [{ scale: pulseAnim }],
             },
           ]}
@@ -107,13 +104,20 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
               handleTapTarget();
             }}
             style={styles.targetInner}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Target nomor ${currentIndex + 1}`}
           >
             <Text style={styles.targetNumber}>{currentIndex + 1}</Text>
           </TouchableOpacity>
         </Animated.View>
       </TouchableOpacity>
 
-      <Text style={styles.hint}>Ketuk lingkaran berwarna • Salah = Mulai Ulang</Text>
+      <View style={styles.footerBar}>
+        <Text style={styles.hint}>
+          Ketuk lingkaran bernomor tepat sasaran. Jika meleset, hitungan diulang dari awal.
+        </Text>
+      </View>
     </Animated.View>
   );
 }
@@ -121,72 +125,85 @@ export default function TapChallenge({ difficulty, onComplete }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 16,
+    paddingHorizontal: 16,
   },
   header: {
     alignItems: 'center',
     marginBottom: 12,
-    paddingHorizontal: 20,
   },
-  title: {
+  missionTag: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FF5500',
+    letterSpacing: 1.5,
+  },
+  counterText: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 1,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#ff6b35',
+    fontSize: 12,
+    color: '#8E97A8',
     marginTop: 4,
-    fontWeight: '600',
   },
-  progressBar: {
+  progressTrack: {
     height: 6,
-    backgroundColor: '#1e1e2e',
-    marginHorizontal: 24,
+    backgroundColor: '#1E2330',
     borderRadius: 3,
-    marginBottom: 8,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#ff6b35',
-    borderRadius: 3,
+    backgroundColor: '#FF5500',
   },
   tapArea: {
     flex: 1,
-    position: 'relative',
-    marginHorizontal: 8,
+    backgroundColor: '#12141B',
     borderRadius: 16,
-    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#1e1e2e',
+    borderColor: '#222735',
+    position: 'relative',
+    overflow: 'hidden',
   },
   target: {
     position: 'absolute',
     width: TARGET_SIZE,
     height: TARGET_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   targetInner: {
     width: TARGET_SIZE,
     height: TARGET_SIZE,
     borderRadius: TARGET_SIZE / 2,
-    backgroundColor: '#ff6b35',
+    backgroundColor: '#FF5500',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#ff6b35',
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
+    shadowColor: '#FF5500',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
     elevation: 8,
   },
   targetNumber: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  footerBar: {
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   hint: {
-    color: '#555',
-    textAlign: 'center',
+    color: '#6F788B',
     fontSize: 12,
-    paddingVertical: 12,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

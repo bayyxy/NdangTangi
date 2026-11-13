@@ -7,12 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   Switch,
-  Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alarm, AlarmChallenge, ChallengeType, RepeatDay } from '../types/alarm';
 import { useAlarmStore } from '../store/alarmStore';
-import { generateId, formatTime } from '../utils/helpers';
+import { generateId, getTimeUntil } from '../utils/helpers';
 
 const DAYS: { key: RepeatDay; label: string }[] = [
   { key: 'sun', label: 'Min' },
@@ -24,28 +23,69 @@ const DAYS: { key: RepeatDay; label: string }[] = [
   { key: 'sat', label: 'Sab' },
 ];
 
-const CHALLENGES: { type: ChallengeType; emoji: string; label: string; desc: string }[] = [
-  { type: 'tap', emoji: '🎯', label: 'Ketuk Acak', desc: 'Ketuk target yang muncul secara acak' },
-  { type: 'swipe', emoji: '👆', label: 'Geser Pola', desc: 'Geser sesuai urutan arah panah' },
-  { type: 'shake', emoji: '📳', label: 'Guncang HP', desc: 'Guncang HP selama beberapa detik' },
+const CHALLENGES: {
+  type: ChallengeType;
+  label: string;
+  tagline: string;
+  desc: string;
+}[] = [
+  {
+    type: 'tap',
+    label: 'Ketuk Acak',
+    tagline: 'FOKUS & AKURASI',
+    desc: 'Ketuk target angka acak berurutan di layar tanpa melakukan kesalahan.',
+  },
+  {
+    type: 'swipe',
+    label: 'Geser Pola',
+    tagline: 'REFLEKS MOTORIK',
+    desc: 'Geser layar mengikuti urutan kombinasi arah panah yang ditentukan.',
+  },
+  {
+    type: 'shake',
+    label: 'Guncang HP',
+    tagline: 'AKTIVITAS FISIK',
+    desc: 'Guncangkan perangkat secara konstan hingga durasi timer selesai.',
+  },
 ];
 
-const DIFFICULTIES = [
-  { key: 'easy' as const, label: 'Mudah', color: '#16a34a' },
-  { key: 'medium' as const, label: 'Sedang', color: '#f59e0b' },
-  { key: 'hard' as const, label: 'Sulit', color: '#dc2626' },
-  { key: 'hard' as const, label: 'Sangat Sulit', color: '#dc2626' },
+const DIFFICULTIES: {
+  key: 'easy' | 'medium' | 'hard';
+  label: string;
+  desc: string;
+  color: string;
+  bg: string;
+}[] = [
+  {
+    key: 'easy',
+    label: 'Mudah',
+    desc: 'Bangun santai (target sedikit)',
+    color: '#10B981',
+    bg: 'rgba(16, 185, 129, 0.12)',
+  },
+  {
+    key: 'medium',
+    label: 'Sedang',
+    desc: 'Standar disiplin (rekomendasi)',
+    color: '#F59E0B',
+    bg: 'rgba(245, 158, 11, 0.12)',
+  },
+  {
+    key: 'hard',
+    label: 'Sulit',
+    desc: 'Anti kesiangan akut',
+    color: '#EF4444',
+    bg: 'rgba(239, 68, 68, 0.12)',
+  },
 ];
 
 export default function AddAlarmScreen() {
-  // useLocalSearchParams() — fungsi expo-router untuk membaca parameter rute
   const { alarmId } = useLocalSearchParams<{ alarmId?: string }>();
   const { alarms, addAlarm, updateAlarm } = useAlarmStore();
 
   const existing = alarmId ? alarms.find((a) => a.id === alarmId) : undefined;
 
-  // ─── useState: state form alarm ─────────────────────────────────────────────
-  const [hour, setHour] = useState(existing?.hour ?? 7);
+  const [hour, setHour] = useState(existing?.hour ?? 6);
   const [minute, setMinute] = useState(existing?.minute ?? 0);
   const [label, setLabel] = useState(existing?.label ?? '');
   const [repeatDays, setRepeatDays] = useState<RepeatDay[]>(existing?.repeatDays ?? []);
@@ -54,7 +94,6 @@ export default function AddAlarmScreen() {
   );
   const [snoozeEnabled, setSnoozeEnabled] = useState(existing?.snoozeEnabled ?? false);
 
-  // useEffect: sinkronisasi state saat alarmId berubah (misal navigasi ulang)
   useEffect(() => {
     if (existing) {
       setHour(existing.hour);
@@ -64,12 +103,24 @@ export default function AddAlarmScreen() {
       setChallenge(existing.challenge);
       setSnoozeEnabled(existing.snoozeEnabled);
     }
-  }, [alarmId]);
+  }, [alarmId, existing]);
 
   const toggleDay = (day: RepeatDay) => {
     setRepeatDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
+  };
+
+  const setWeekdayPreset = () => {
+    setRepeatDays(['mon', 'tue', 'wed', 'thu', 'fri']);
+  };
+
+  const setEverydayPreset = () => {
+    setRepeatDays(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
+  };
+
+  const clearDaysPreset = () => {
+    setRepeatDays([]);
   };
 
   const adjustHour = (delta: number) => setHour((h) => (h + delta + 24) % 24);
@@ -80,7 +131,7 @@ export default function AddAlarmScreen() {
       id: existing?.id ?? generateId(),
       hour,
       minute,
-      label,
+      label: label.trim(),
       enabled: true,
       repeatDays,
       challenge,
@@ -90,256 +141,617 @@ export default function AddAlarmScreen() {
       createdAt: existing?.createdAt ?? Date.now(),
     };
 
-    if (existing) await updateAlarm(alarm);
-    else await addAlarm(alarm);
+    if (existing) {
+      await updateAlarm(alarm);
+    } else {
+      await addAlarm(alarm);
+    }
 
-    // router.back() — kembali ke halaman sebelumnya (Home)
     router.back();
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>{existing ? 'Edit Alarm' : 'Alarm Baru'}</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.topHeader}>
+        <Text style={styles.pageTitle}>{existing ? 'Ubah Konfigurasi Alarm' : 'Pasang Alarm Baru'}</Text>
+        <Text style={styles.pageSubtitle}>Tentukan waktu dan misi penghenti alarm</Text>
+      </View>
 
-      {/* Time Picker */}
+      {/* ─── Bagian 1: Waktu Alarm ─── */}
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>⏰ Waktu</Text>
-        <View style={styles.timePicker}>
-          <View style={styles.timeColumn}>
-            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustHour(1)}>
-              <Text style={styles.timeBtnText}>▲</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>WAKTU ALARM</Text>
+          <Text style={styles.relativeNotice}>
+            Berdering dalam {getTimeUntil(hour, minute)}
+          </Text>
+        </View>
+
+        <View style={styles.pickerContainer}>
+          {/* Kolom Jam */}
+          <View style={styles.timeUnitBlock}>
+            <TouchableOpacity
+              style={styles.stepperButton}
+              onPress={() => adjustHour(1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Tambah satu jam"
+            >
+              <Text style={styles.stepperIcon}>+</Text>
             </TouchableOpacity>
-            <Text style={styles.timeValue}>{String(hour).padStart(2, '0')}</Text>
-            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustHour(-1)}>
-              <Text style={styles.timeBtnText}>▼</Text>
+
+            <View style={styles.timeDisplayBox}>
+              <Text style={styles.digitText}>{String(hour).padStart(2, '0')}</Text>
+              <Text style={styles.unitSubText}>JAM</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.stepperButton}
+              onPress={() => adjustHour(-1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Kurangi satu jam"
+            >
+              <Text style={styles.stepperIcon}>-</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.timeSep}>:</Text>
-          <View style={styles.timeColumn}>
-            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustMinute(1)}>
-              <Text style={styles.timeBtnText}>▲</Text>
+
+          <Text style={styles.timeColon}>:</Text>
+
+          {/* Kolom Menit */}
+          <View style={styles.timeUnitBlock}>
+            <TouchableOpacity
+              style={styles.stepperButton}
+              onPress={() => adjustMinute(1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Tambah satu menit"
+            >
+              <Text style={styles.stepperIcon}>+</Text>
             </TouchableOpacity>
-            <Text style={styles.timeValue}>{String(minute).padStart(2, '0')}</Text>
-            <TouchableOpacity style={styles.timeBtn} onPress={() => adjustMinute(-1)}>
-              <Text style={styles.timeBtnText}>▼</Text>
+
+            <View style={styles.timeDisplayBox}>
+              <Text style={styles.digitText}>{String(minute).padStart(2, '0')}</Text>
+              <Text style={styles.unitSubText}>MENIT</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.stepperButton}
+              onPress={() => adjustMinute(-1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Kurangi satu menit"
+            >
+              <Text style={styles.stepperIcon}>-</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Tombol Cepat Penyesuaian Menit */}
+        <View style={styles.quickPresetRow}>
+          <TouchableOpacity
+            style={styles.quickPresetBtn}
+            onPress={() => {
+              setHour(6);
+              setMinute(0);
+            }}
+          >
+            <Text style={styles.quickPresetText}>06:00 Pagi</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickPresetBtn}
+            onPress={() => {
+              setHour(7);
+              setMinute(0);
+            }}
+          >
+            <Text style={styles.quickPresetText}>07:00 Pagi</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickPresetBtn}
+            onPress={() => adjustMinute(15)}
+          >
+            <Text style={styles.quickPresetText}>+15 Menit</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Label */}
+      {/* ─── Bagian 2: Label / Deskripsi Alarm ─── */}
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>🏷️ Label</Text>
+        <Text style={styles.sectionLabel}>LABEL & CATATAN</Text>
         <TextInput
-          style={styles.input}
-          placeholder="Nama alarm (opsional)"
-          placeholderTextColor="#555"
+          style={styles.inputField}
+          placeholder="Contoh: Bangun Kuliah Pagi, Olahraga, Salat Subuh"
+          placeholderTextColor="#5C6578"
           value={label}
           onChangeText={setLabel}
+          maxLength={40}
         />
       </View>
 
-      {/* Repeat Days */}
+      {/* ─── Bagian 3: Jadwal Pengulangan ─── */}
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>📅 Ulangi</Text>
-        <View style={styles.daysRow}>
-          {DAYS.map(({ key, label: dayLabel }) => (
-            <TouchableOpacity
-              key={key}
-              style={[styles.dayBtn, repeatDays.includes(key) && styles.dayBtnActive]}
-              onPress={() => toggleDay(key)}
-            >
-              <Text style={[styles.dayText, repeatDays.includes(key) && styles.dayTextActive]}>
-                {dayLabel}
-              </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>HARI AKTIF</Text>
+          <View style={styles.presetGroup}>
+            <TouchableOpacity onPress={setWeekdayPreset} style={styles.presetTextBtn}>
+              <Text style={styles.presetText}>Kerja</Text>
             </TouchableOpacity>
-          ))}
+            <Text style={styles.presetDivider}>|</Text>
+            <TouchableOpacity onPress={setEverydayPreset} style={styles.presetTextBtn}>
+              <Text style={styles.presetText}>Semua</Text>
+            </TouchableOpacity>
+            <Text style={styles.presetDivider}>|</Text>
+            <TouchableOpacity onPress={clearDaysPreset} style={styles.presetTextBtn}>
+              <Text style={styles.presetText}>Reset</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.repeatHint}>
-          {repeatDays.length === 0 ? 'Satu kali saja' : 'Setiap ' + repeatDays.join(', ')}
+
+        <View style={styles.daysRow}>
+          {DAYS.map(({ key, label: dayLabel }) => {
+            const active = repeatDays.includes(key);
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.dayButton, active && styles.dayButtonActive]}
+                onPress={() => toggleDay(key)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Hari ${dayLabel}, status ${active ? 'aktif' : 'tidak aktif'}`}
+              >
+                <Text style={[styles.dayButtonText, active && styles.dayButtonTextActive]}>
+                  {dayLabel}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={styles.repeatSummaryText}>
+          {repeatDays.length === 0
+            ? 'Alarm hanya akan berdering satu kali saat waktu tiba.'
+            : `Berulang setiap: ${repeatDays.map((d) => DAYS.find((x) => x.key === d)?.label).join(', ')}`}
         </Text>
       </View>
 
-      {/* Challenge Selector */}
+      {/* ─── Bagian 4: Misi Bangun (Tantangan) ─── */}
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>🎮 Jenis Tantangan</Text>
-        {CHALLENGES.map((c) => (
-          <TouchableOpacity
-            key={c.type}
-            style={[styles.challengeOption, challenge.type === c.type && styles.challengeActive]}
-            onPress={() => setChallenge({ ...challenge, type: c.type })}
-          >
-            <Text style={styles.challengeEmoji}>{c.emoji}</Text>
-            <View style={styles.challengeInfo}>
-              <Text style={styles.challengeLabel}>{c.label}</Text>
-              <Text style={styles.challengeDesc}>{c.desc}</Text>
-            </View>
-            {challenge.type === c.type && <Text style={styles.checkmark}>✓</Text>}
-          </TouchableOpacity>
-        ))}
-      </View>
+        <Text style={styles.sectionLabel}>METODE TANTANGAN BANGUN</Text>
+        <Text style={styles.sectionSubDesc}>
+          Alarm tidak dapat dimatikan sebelum kamu menyelesaikan tantangan ini.
+        </Text>
 
-      {/* Difficulty */}
-      <View style={styles.card}>
-        <Text style={styles.sectionLabel}>💪 Kesulitan</Text>
-        <View style={styles.diffRow}>
-          {DIFFICULTIES.map((d) => (
-            <TouchableOpacity
-              key={d.label}
-              style={[
-                styles.diffBtn,
-                challenge.difficulty === d.key && { backgroundColor: d.color },
-              ]}
-              onPress={() => setChallenge({ ...challenge, difficulty: d.key })}
-            >
-              <Text
-                style={[
-                  styles.diffText,
-                  challenge.difficulty === d.key && styles.diffTextActive,
-                ]}
+        <View style={styles.challengeGrid}>
+          {CHALLENGES.map((c) => {
+            const isSelected = challenge.type === c.type;
+            return (
+              <TouchableOpacity
+                key={c.type}
+                style={[styles.challengeCard, isSelected && styles.challengeCardActive]}
+                onPress={() => setChallenge({ ...challenge, type: c.type })}
+                activeOpacity={0.8}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
               >
-                {d.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.challengeCardTop}>
+                  <Text style={[styles.challengeBadge, isSelected && styles.challengeBadgeActive]}>
+                    {c.tagline}
+                  </Text>
+                  <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                </View>
+                <Text style={[styles.challengeCardTitle, isSelected && styles.challengeTitleActive]}>
+                  {c.label}
+                </Text>
+                <Text style={styles.challengeCardDesc}>{c.desc}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
-      {/* Snooze */}
-      <View style={[styles.card, styles.row]}>
-        <View>
-          <Text style={styles.sectionLabel}>😴 Snooze</Text>
-          <Text style={styles.snoozeHint}>Maks 3x snooze 5 menit</Text>
+      {/* ─── Bagian 5: Tingkat Kesulitan Misi ─── */}
+      <View style={styles.card}>
+        <Text style={styles.sectionLabel}>INTENSITAS KESULITAN</Text>
+        <View style={styles.difficultyContainer}>
+          {DIFFICULTIES.map((d) => {
+            const isSelected = challenge.difficulty === d.key;
+            return (
+              <TouchableOpacity
+                key={d.key}
+                style={[
+                  styles.difficultyOption,
+                  isSelected && { borderColor: d.color, backgroundColor: d.bg },
+                ]}
+                onPress={() => setChallenge({ ...challenge, difficulty: d.key })}
+                activeOpacity={0.8}
+              >
+                <View style={styles.diffHeader}>
+                  <Text style={[styles.diffName, isSelected && { color: d.color }]}>
+                    {d.label}
+                  </Text>
+                  {isSelected && (
+                    <View style={[styles.diffDot, { backgroundColor: d.color }]} />
+                  )}
+                </View>
+                <Text style={styles.diffDescText}>{d.desc}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* ─── Bagian 6: Snooze ─── */}
+      <View style={[styles.card, styles.snoozeRow]}>
+        <View style={styles.snoozeInfo}>
+          <Text style={styles.sectionLabel}>IZINKAN TUNDA (SNOOZE)</Text>
+          <Text style={styles.snoozeSub}>
+            Maksimal 3 kali tunda dengan interval 5 menit per tunda.
+          </Text>
         </View>
         <Switch
           value={snoozeEnabled}
           onValueChange={setSnoozeEnabled}
-          trackColor={{ false: '#1e1e2e', true: '#ff6b35' }}
-          thumbColor="#fff"
+          trackColor={{ false: '#262A36', true: '#FF5500' }}
+          thumbColor="#FFFFFF"
         />
       </View>
 
-      {/* Save */}
-      <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-        <Text style={styles.saveBtnText}>💾 Simpan Alarm</Text>
+      {/* ─── Tombol Simpan ─── */}
+      <TouchableOpacity
+        style={styles.saveActionButton}
+        onPress={handleSave}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Simpan dan aktifkan alarm"
+      >
+        <Text style={styles.saveActionText}>
+          {existing ? 'PERBARUI ALARM' : 'SIMPAN DAN AKTIFKAN'}
+        </Text>
       </TouchableOpacity>
 
-      <Text style={styles.footer}>
-        {existing ? 'Edit Alarm' : 'Nama: Bayu Adi Nugroho  NIM: 202410370110193'}
+      {/* Metadata Mahasiswa */}
+      <Text style={styles.studentFooter}>
+        Bayu Adi Nugroho (NIM: 202410370110193)
       </Text>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0f0f1a' },
-  content: { padding: 20, paddingBottom: 40 },
-  heading: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#fff',
+  screen: {
+    flex: 1,
+    backgroundColor: '#0B0C10',
+  },
+  content: {
+    padding: 16,
+    paddingTop: 20,
+    paddingBottom: 48,
+  },
+  topHeader: {
     marginBottom: 20,
   },
-  card: {
-    backgroundColor: '#12121f',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#1e1e2e',
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  row: {
+  pageSubtitle: {
+    fontSize: 13,
+    color: '#8E97A8',
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: '#15171E',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#232733',
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  sectionLabel: {
-    color: '#888',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
     marginBottom: 12,
   },
-  timePicker: {
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8E97A8',
+    letterSpacing: 1.2,
+  },
+  sectionSubDesc: {
+    fontSize: 12,
+    color: '#6F788B',
+    marginBottom: 14,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  relativeNotice: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FF5500',
+  },
+  pickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
+    paddingVertical: 8,
   },
-  timeColumn: { alignItems: 'center', gap: 8 },
-  timeBtn: {
-    backgroundColor: '#1e1e2e',
-    borderRadius: 12,
-    width: 56,
-    height: 40,
+  timeUnitBlock: {
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
-  timeBtnText: { color: '#fff', fontSize: 18 },
-  timeValue: { color: '#fff', fontSize: 52, fontWeight: '900', width: 80, textAlign: 'center' },
-  timeSep: { color: '#fff', fontSize: 52, fontWeight: '900', marginBottom: 8 },
-  input: {
-    backgroundColor: '#0f0f1a',
-    borderRadius: 12,
-    padding: 14,
-    color: '#fff',
-    fontSize: 16,
+  stepperButton: {
+    width: 60,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#1F2430',
     borderWidth: 1,
-    borderColor: '#1e1e2e',
-  },
-  daysRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  dayBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#1e1e2e',
+    borderColor: '#2D3444',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayBtnActive: { backgroundColor: '#ff6b35' },
-  dayText: { color: '#666', fontSize: 13, fontWeight: '700' },
-  dayTextActive: { color: '#fff' },
-  repeatHint: { color: '#555', fontSize: 12, marginTop: 8 },
-  challengeOption: {
+  stepperIcon: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  timeDisplayBox: {
+    width: 90,
+    height: 84,
+    backgroundColor: '#0F1117',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A3040',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  digitText: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    includeFontPadding: false,
+  },
+  unitSubText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6F788B',
+    letterSpacing: 1.5,
+    marginTop: -2,
+  },
+  timeColon: {
+    fontSize: 44,
+    fontWeight: '900',
+    color: '#495266',
+    marginTop: -12,
+  },
+  quickPresetRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1F2430',
+  },
+  quickPresetBtn: {
+    backgroundColor: '#1A1E27',
+    borderRadius: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#282F3E',
+  },
+  quickPresetText: {
+    color: '#B0B8C8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  inputField: {
+    backgroundColor: '#0F1117',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    color: '#FFFFFF',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#262C3A',
+    marginTop: 4,
+  },
+  presetGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0f0f1a',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    gap: 6,
   },
-  challengeActive: { borderColor: '#ff6b35' },
-  challengeEmoji: { fontSize: 28, marginRight: 12 },
-  challengeInfo: { flex: 1 },
-  challengeLabel: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  challengeDesc: { color: '#555', fontSize: 12, marginTop: 2 },
-  checkmark: { color: '#ff6b35', fontSize: 20, fontWeight: '900' },
-  diffRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  diffBtn: {
+  presetTextBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  presetText: {
+    color: '#FF5500',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  presetDivider: {
+    color: '#3A4254',
+    fontSize: 10,
+  },
+  daysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginTop: 4,
+  },
+  dayButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#1e1e2e',
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: '#1A1E27',
+    borderWidth: 1,
+    borderColor: '#282F3E',
     alignItems: 'center',
-    minWidth: 70,
+    justifyContent: 'center',
   },
-  diffText: { color: '#666', fontWeight: '700' },
-  diffTextActive: { color: '#fff' },
-  snoozeHint: { color: '#555', fontSize: 12, marginTop: 2 },
-  saveBtn: {
-    backgroundColor: '#ff6b35',
-    borderRadius: 16,
-    paddingVertical: 18,
+  dayButtonActive: {
+    backgroundColor: '#FF5500',
+    borderColor: '#FF5500',
+  },
+  dayButtonText: {
+    color: '#7B8496',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  dayButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  repeatSummaryText: {
+    color: '#6F788B',
+    fontSize: 12,
+    marginTop: 12,
+    lineHeight: 16,
+  },
+  challengeGrid: {
+    gap: 10,
+  },
+  challengeCard: {
+    backgroundColor: '#0F1117',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#232938',
+  },
+  challengeCardActive: {
+    borderColor: '#FF5500',
+    backgroundColor: 'rgba(255, 85, 0, 0.05)',
+  },
+  challengeCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  challengeBadge: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#6F788B',
+    letterSpacing: 1,
+  },
+  challengeBadgeActive: {
+    color: '#FF5500',
+  },
+  radioCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#384154',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleActive: {
+    borderColor: '#FF5500',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF5500',
+  },
+  challengeCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#DCE2EE',
+  },
+  challengeTitleActive: {
+    color: '#FFFFFF',
+  },
+  challengeCardDesc: {
+    fontSize: 12,
+    color: '#7D879C',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  difficultyContainer: {
+    gap: 8,
+    marginTop: 4,
+  },
+  difficultyOption: {
+    backgroundColor: '#0F1117',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#232938',
+  },
+  diffHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  diffName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#CBD3E1',
+  },
+  diffDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  diffDescText: {
+    fontSize: 11,
+    color: '#6F788B',
+    marginTop: 3,
+  },
+  snoozeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  snoozeInfo: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  snoozeSub: {
+    fontSize: 12,
+    color: '#6F788B',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  saveActionButton: {
+    backgroundColor: '#FF5500',
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#ff6b35',
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: '#FF5500',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
-  saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  footer: { color: '#ffffff88', textAlign: 'center', marginTop: 16, fontSize: 12 },
+  saveActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  studentFooter: {
+    color: '#4B5569',
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
 });

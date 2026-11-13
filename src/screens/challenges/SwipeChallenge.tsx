@@ -7,12 +7,11 @@ import {
   PanResponder,
   Animated,
 } from 'react-native';
-// import * as Haptics from 'expo-haptics';
 import { SwipeDirection } from '../../types/alarm';
 import { generateSwipePattern, getDifficultyConfig } from '../../utils/helpers';
 
 const { width: W } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 50;
+const SWIPE_THRESHOLD = 45;
 
 const ARROW_MAP: Record<SwipeDirection, string> = {
   left: '←',
@@ -21,11 +20,11 @@ const ARROW_MAP: Record<SwipeDirection, string> = {
   down: '↓',
 };
 
-const COLOR_MAP: Record<SwipeDirection, string> = {
-  left: '#7c3aed',
-  right: '#2563eb',
-  up: '#16a34a',
-  down: '#dc2626',
+const LABEL_MAP: Record<SwipeDirection, string> = {
+  left: 'GESER KIRI',
+  right: 'GESER KANAN',
+  up: 'GESER ATAS',
+  down: 'GESER BAWAH',
 };
 
 interface Props {
@@ -37,20 +36,15 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
   const config = getDifficultyConfig(difficulty);
   const [pattern] = useState(() => generateSwipePattern(config.swipeCount));
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [failed, setFailed] = useState(false);
-  const swipeAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const triggerWrong = useCallback(() => {
-    // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    setFailed(true);
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 15, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -15, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 16, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -16, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start(() => {
-      setFailed(false);
       setCurrentIndex(0);
     });
   }, [shakeAnim]);
@@ -74,10 +68,8 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
 
       const expected = pattern[currentIndex];
       if (detected === expected) {
-        // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const next = currentIndex + 1;
         if (next >= pattern.length) {
-          // Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           onComplete();
         } else {
           setCurrentIndex(next);
@@ -89,62 +81,88 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
   });
 
   const current = pattern[currentIndex];
+  const progress = currentIndex / pattern.length;
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header Tantangan */}
       <View style={styles.header}>
-        <Text style={styles.title}>👆 Ikuti Pola!</Text>
-        <Text style={styles.subtitle}>{currentIndex}/{pattern.length} langkah</Text>
+        <Text style={styles.missionTag}>MISI: GESER POLA REFLEKS</Text>
+        <Text style={styles.counterText}>
+          {currentIndex} / {pattern.length} Langkah
+        </Text>
+        <Text style={styles.subtitle}>
+          Geser layar sesuai urutan arah panah target
+        </Text>
       </View>
 
-      {/* Progress dots */}
-      <View style={styles.dotsRow}>
-        {pattern.map((dir, i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              i < currentIndex && styles.dotDone,
-              i === currentIndex && styles.dotCurrent,
-            ]}
-          >
-            {i <= currentIndex && (
-              <Text style={styles.dotArrow}>
-                {i < currentIndex ? '✓' : ARROW_MAP[dir]}
+      {/* Progress Bar */}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+      </View>
+
+      {/* Rangkaian Langkah / Pola */}
+      <View style={styles.stepsRow}>
+        {pattern.map((dir, i) => {
+          const isDone = i < currentIndex;
+          const isCurrent = i === currentIndex;
+
+          return (
+            <View
+              key={i}
+              style={[
+                styles.stepChip,
+                isDone && styles.stepChipDone,
+                isCurrent && styles.stepChipCurrent,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.stepArrow,
+                  isDone && styles.stepArrowDone,
+                  isCurrent && styles.stepArrowCurrent,
+                ]}
+              >
+                {isDone ? '✓' : ARROW_MAP[dir]}
               </Text>
-            )}
-          </View>
-        ))}
+            </View>
+          );
+        })}
       </View>
 
-      {/* Main swipe area */}
+      {/* Area Geser Interaktif */}
       <Animated.View
         style={[styles.swipeArea, { transform: [{ translateX: shakeAnim }] }]}
         {...panResponder.panHandlers}
       >
-        <View style={[styles.arrowContainer, { borderColor: COLOR_MAP[current] }]}>
-          <Text style={[styles.arrow, { color: COLOR_MAP[current] }]}>
-            {ARROW_MAP[current]}
-          </Text>
-          <Text style={[styles.dirLabel, { color: COLOR_MAP[current] }]}>
-            Geser {
-              current === 'left' ? 'Kiri' :
-              current === 'right' ? 'Kanan' :
-              current === 'up' ? 'Atas' : 'Bawah'
-            }
-          </Text>
+        <View style={styles.targetBezel}>
+          <Text style={styles.targetArrow}>{ARROW_MAP[current]}</Text>
+          <View style={styles.labelBadge}>
+            <Text style={styles.labelText}>{LABEL_MAP[current]}</Text>
+          </View>
         </View>
+
+        {currentIndex + 1 < pattern.length ? (
+          <View style={styles.nextHintContainer}>
+            <Text style={styles.nextHintLabel}>BERIKUTNYA</Text>
+            <Text style={styles.nextHintValue}>
+              {ARROW_MAP[pattern[currentIndex + 1]]} {LABEL_MAP[pattern[currentIndex + 1]]}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.nextHintContainer}>
+            <Text style={styles.nextHintLabel}>STATUS</Text>
+            <Text style={styles.nextHintValue}>LANGKAH TERAKHIR</Text>
+          </View>
+        )}
       </Animated.View>
 
-      {/* Next preview */}
-      {currentIndex + 1 < pattern.length && (
-        <Text style={styles.nextHint}>
-          Berikutnya: {ARROW_MAP[pattern[currentIndex + 1]]}
+      {/* Footer Info */}
+      <View style={styles.footerBar}>
+        <Text style={styles.hint}>
+          Geser jari pada kotak di atas. Jika arah salah, urutan langkah akan diulang.
         </Text>
-      )}
-
-      <Text style={styles.hint}>Geser sesuai arah panah • Salah = Mulai Ulang</Text>
+      </View>
     </View>
   );
 }
@@ -152,85 +170,154 @@ export default function SwipeChallenge({ difficulty, onComplete }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f1a',
-    paddingTop: 20,
-    alignItems: 'center',
+    backgroundColor: '#0B0C10',
+    paddingTop: 16,
+    paddingHorizontal: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  title: {
+  missionTag: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FF5500',
+    letterSpacing: 1.5,
+  },
+  counterText: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    color: '#7c3aed',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 12,
+    color: '#8E97A8',
     marginTop: 4,
   },
-  dotsRow: {
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#1E2330',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF5500',
+  },
+  stepsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 6,
-    marginBottom: 24,
-    paddingHorizontal: 20,
+    gap: 8,
+    marginBottom: 16,
   },
-  dot: {
+  stepChip: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1e1e2e',
+    borderRadius: 8,
+    backgroundColor: '#15171E',
+    borderWidth: 1,
+    borderColor: '#232733',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dotDone: {
-    backgroundColor: '#16a34a',
+  stepChipDone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: '#10B981',
   },
-  dotCurrent: {
-    backgroundColor: '#7c3aed',
+  stepChipCurrent: {
+    backgroundColor: 'rgba(255, 85, 0, 0.2)',
+    borderColor: '#FF5500',
   },
-  dotArrow: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
+  stepArrow: {
+    color: '#4B5565',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  stepArrowDone: {
+    color: '#10B981',
+    fontWeight: '900',
+    fontSize: 13,
+  },
+  stepArrowCurrent: {
+    color: '#FF5500',
+    fontWeight: '900',
+    fontSize: 16,
   },
   swipeArea: {
     flex: 1,
-    width: W - 48,
-    borderRadius: 24,
-    backgroundColor: '#12121f',
+    width: W - 32,
+    alignSelf: 'center',
+    borderRadius: 20,
+    backgroundColor: '#15171E',
+    borderWidth: 1,
+    borderColor: '#232733',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 24,
   },
-  arrowContainer: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+  targetBezel: {
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: '#0F1118',
     borderWidth: 3,
+    borderColor: '#FF5500',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#FF5500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  arrow: {
-    fontSize: 80,
+  targetArrow: {
+    fontSize: 76,
     fontWeight: '900',
+    color: '#FFFFFF',
+    lineHeight: 82,
   },
-  dirLabel: {
-    fontSize: 18,
-    fontWeight: '700',
+  labelBadge: {
     marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 85, 0, 0.14)',
   },
-  nextHint: {
-    color: '#555',
-    fontSize: 14,
-    marginTop: 12,
+  labelText: {
+    color: '#FF5500',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  nextHintContainer: {
+    marginTop: 28,
+    alignItems: 'center',
+  },
+  nextHintLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6F788B',
+    letterSpacing: 1.2,
+  },
+  nextHintValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8E97A8',
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
+  footerBar: {
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   hint: {
-    color: '#444',
+    color: '#6F788B',
     fontSize: 12,
-    paddingVertical: 12,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

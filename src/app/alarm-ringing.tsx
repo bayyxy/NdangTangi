@@ -5,8 +5,8 @@ import {
   StyleSheet,
   Animated,
   BackHandler,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { useAlarmStore } from '../store/alarmStore';
 import { AudioService } from '../services/AudioService';
@@ -24,13 +24,12 @@ export default function AlarmRingingScreen() {
   const startPulse = useCallback(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       ])
     ).start();
   }, [pulseAnim]);
 
-  // useEffect: putar audio, animasi pulse, dan blokir tombol back hardware
   useEffect(() => {
     AudioService.play();
     startPulse();
@@ -42,17 +41,15 @@ export default function AlarmRingingScreen() {
   const handleChallengeComplete = useCallback(async () => {
     await AudioService.stop();
     await setActiveAlarm(null);
-    // Jika tidak ada hari berulang, nonaktifkan alarm
     if (alarm && alarm.repeatDays.length === 0) {
       await toggleAlarm(alarm.id);
     }
-    // router.replace('/') — kembali ke home, menghapus stack alarm-ringing
-    router.replace('/');
+    // Setelah misi alarm berhasil diselesaikan, arahkan ke Briefing Pagi (Modul 3)
+    router.replace('/briefing');
   }, [alarm, setActiveAlarm, toggleAlarm]);
 
   if (!alarm) {
     AudioService.stop();
-    // router.replace('/') — fallback jika alarm tidak ditemukan
     router.replace('/');
     return null;
   }
@@ -62,15 +59,26 @@ export default function AlarmRingingScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f1a" />
+      <StatusBar style="light" />
 
-      {/* Jam dengan animasi pulse */}
-      <Animated.View style={[styles.clockSection, { transform: [{ scale: pulseAnim }] }]}>
-        <Text style={styles.clock}>{timeStr}</Text>
-        <Text style={styles.alarmLabel}>{alarm.label || 'Alarm'}</Text>
-      </Animated.View>
+      {/* Header Alarm Berdering */}
+      <View style={styles.topBanner}>
+        <View style={styles.urgentTag}>
+          <View style={styles.urgentDot} />
+          <Text style={styles.urgentTagText}>ALARM SEDANG BERDERING</Text>
+        </View>
 
-      {/* Area tantangan */}
+        <Animated.View style={[styles.clockSection, { transform: [{ scale: pulseAnim }] }]}>
+          <Text style={styles.clock}>{timeStr}</Text>
+          <Text style={styles.alarmLabel}>{alarm.label || 'WAKTU BANGUN!'}</Text>
+        </Animated.View>
+
+        <Text style={styles.instructionText}>
+          Selesaikan misi di bawah ini untuk menonaktifkan dering alarm.
+        </Text>
+      </View>
+
+      {/* Area Misi Tantangan */}
       <View style={styles.challengeArea}>
         {alarm.challenge.type === 'tap' && (
           <TapChallenge
@@ -98,25 +106,64 @@ export default function AlarmRingingScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0f0f1a',
+    backgroundColor: '#0B0C10',
+  },
+  topBanner: {
+    alignItems: 'center',
+    paddingTop: 54,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#0F1117',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1F2430',
+  },
+  urgentTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 6,
+    marginBottom: 8,
+  },
+  urgentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  urgentTagText: {
+    color: '#FF6B6B',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
   },
   clockSection: {
     alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 16,
+    marginVertical: 4,
   },
   clock: {
-    fontSize: 72,
+    fontSize: 64,
     fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -2,
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
   alarmLabel: {
     fontSize: 16,
-    color: '#ff6b35',
-    fontWeight: '600',
-    letterSpacing: 2,
+    color: '#FF5500',
+    fontWeight: '800',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  instructionText: {
+    fontSize: 12,
+    color: '#8E97A8',
+    textAlign: 'center',
+    marginTop: 6,
   },
   challengeArea: {
     flex: 1,
