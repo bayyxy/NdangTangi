@@ -76,47 +76,57 @@ function RootLayoutNav() {
   }
 
   return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: '#0B0C10' },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: { fontWeight: '800' },
+        contentStyle: { backgroundColor: '#0B0C10' },
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="add-alarm"
+        options={{ title: 'Atur Alarm', headerBackTitle: 'Kembali' }}
+      />
+      <Stack.Screen
+        name="add-task"
+        options={{ title: 'Tambah Agenda Tugas', headerBackTitle: 'Kembali' }}
+      />
+      <Stack.Screen
+        name="task/[id]"
+        options={{ title: 'Detail Agenda', headerBackTitle: 'Kembali' }}
+      />
+      <Stack.Screen
+        name="alarm-ringing"
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="briefing/index"
+        options={{ title: 'Briefing & Cuaca Pagi', headerBackTitle: 'Kembali' }}
+      />
+      <Stack.Screen
+        name="briefing/[id]"
+        options={{ title: 'Detail Kesiapan Pagi', headerBackTitle: 'Kembali' }}
+      />
+      <Stack.Screen
+        name="notes"
+        options={{ title: 'Catatan Baru (Supabase)', headerBackTitle: 'Kembali' }}
+      />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: '#0B0C10' },
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: { fontWeight: '800' },
-            contentStyle: { backgroundColor: '#0B0C10' },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen
-            name="(tabs)"
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="add-alarm"
-            options={{ title: 'Atur Alarm', headerBackTitle: 'Kembali' }}
-          />
-          <Stack.Screen
-            name="add-task"
-            options={{ title: 'Tambah Agenda Tugas', headerBackTitle: 'Kembali' }}
-          />
-          <Stack.Screen
-            name="task/[id]"
-            options={{ title: 'Detail Agenda', headerBackTitle: 'Kembali' }}
-          />
-          <Stack.Screen
-            name="alarm-ringing"
-            options={{ headerShown: false, gestureEnabled: false }}
-          />
-          <Stack.Screen
-            name="briefing/index"
-            options={{ title: 'Briefing & Cuaca Pagi', headerBackTitle: 'Kembali' }}
-          />
-          <Stack.Screen
-            name="briefing/[id]"
-            options={{ title: 'Detail Kesiapan Pagi', headerBackTitle: 'Kembali' }}
-          />
-        </Stack>
+        <AuthProvider>
+          <StatusBar style="light" />
+          <RootLayoutNav />
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
