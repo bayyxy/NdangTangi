@@ -38,7 +38,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -47,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: 'Jadwal',
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -56,7 +56,7 @@ export default function TabLayout() {
         options={{
           title: 'Fokus',
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'timer' : 'timer-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'timer' : 'timer-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -65,7 +65,7 @@ export default function TabLayout() {
         options={{
           title: 'Statistik',
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function TabLayout() {
         options={{
           title: 'Profil',
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color as string} />
           ),
         }}
       />

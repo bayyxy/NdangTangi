@@ -12,7 +12,10 @@
     "ios": {
       "supportsTablet": false,
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "fetch"],
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
         "NSMotionUsageDescription": "Dibutuhkan untuk mendeteksi guncangan HP saat tantangan alarm."
       }
     },
@@ -36,9 +39,12 @@
         {
           "icon": "./assets/icon.png",
           "color": "#ff6b35",
-          "sounds": ["./assets/sounds/alarm.mp3"]
+          "sounds": [
+            "./assets/sounds/alarm.mp3"
+          ]
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
