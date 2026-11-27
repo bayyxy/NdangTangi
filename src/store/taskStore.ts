@@ -1,126 +1,219 @@
 // src/store/taskStore.ts
-// Store Zustand untuk Daily Tasks & Timeline Jadwal Harian
+// Store Zustand terintegrasi Cloud Database Supabase (CRUD + RLS + Optimistic UI)
 
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DailyTask } from '../types/task';
+import { DailyTask, TaskCategory, TaskPriority } from '../types/task';
+import { supabase } from '../lib/supabase';
 import { generateId } from '../utils/helpers';
 
-const STORAGE_KEY = '@ndangtangi_daily_tasks_v1';
+interface SupabaseTaskRow {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string | null;
+  priority: TaskPriority;
+  category: TaskCategory;
+  completed: boolean;
+  reminder_enabled: boolean;
+  created_at: string;
+}
 
-const INITIAL_SEED_TASKS: DailyTask[] = [
-  {
-    id: 'seed-task-1',
-    title: 'Praktikum Pemrograman Mobile',
-    description: 'Sesi praktikum di Lab Informatika Kampus III UMM, materi Async dan API Call.',
-    startTime: '07:00',
-    endTime: '08:40',
-    priority: 'high',
-    category: 'praktikum',
-    completed: true,
-    reminderEnabled: true,
-    createdAt: Date.now() - 3600000,
-  },
-  {
-    id: 'seed-task-2',
-    title: 'Review Modul 3 & Uji Live Coding',
-    description: 'Pelajari konsep Promise, async/await, dan .then() untuk persiapan demo di depan aslab.',
-    startTime: '10:00',
-    endTime: '11:30',
-    priority: 'high',
-    category: 'tugas',
-    completed: false,
-    reminderEnabled: true,
-    createdAt: Date.now() - 1800000,
-  },
-  {
-    id: 'seed-task-3',
-    title: 'Diskusi Proyek Tim & Git Push',
-    description: 'Sinkronisasi fitur repositori bersama anggota kelompok Informatika 24.',
-    startTime: '13:00',
-    endTime: '14:30',
-    priority: 'medium',
-    category: 'kuliah',
-    completed: false,
-    reminderEnabled: true,
-    createdAt: Date.now() - 900000,
-  },
-  {
-    id: 'seed-task-4',
-    title: 'Olahraga Sore di Stadion UMM',
-    description: 'Jogging 30 menit untuk menjaga stamina dan kebugaran tubuh.',
-    startTime: '16:00',
-    endTime: '17:00',
-    priority: 'low',
-    category: 'pribadi',
-    completed: false,
-    reminderEnabled: false,
-    createdAt: Date.now(),
-  },
-];
+function mapRowToTask(row: SupabaseTaskRow): DailyTask {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? undefined,
+    startTime: row.start_time,
+    endTime: row.end_time ?? undefined,
+    priority: row.priority,
+    category: row.category,
+    completed: row.completed,
+    reminderEnabled: row.reminder_enabled,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+function sortByStartTime(list: DailyTask[]): DailyTask[] {
+  return [...list].sort((a, b) => a.startTime.localeCompare(b.startTime));
+}
 
 interface TaskState {
   tasks: DailyTask[];
   isLoading: boolean;
+  error: string | null;
   loadTasks: () => Promise<void>;
-  addTask: (task: Omit<DailyTask, 'id' | 'createdAt'>) => Promise<DailyTask>;
+  addTask: (task: Omit<DailyTask, 'id' | 'createdAt'>) => Promise<DailyTask | null>;
   updateTask: (id: string, updates: Partial<DailyTask>) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
+  clearTasks: () => void;
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
-  isLoading: true,
+  isLoading: false,
+  error: null,
 
+  // READ (SELECT): otomatis terisolasi per akun melalui kebijakan RLS Supabase (auth.uid() = user_id)
   loadTasks: async () => {
+    set({ isLoading: true, error: null });
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as DailyTask[];
-        set({ tasks: parsed, isLoading: false });
-      } else {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_TASKS));
-        set({ tasks: INITIAL_SEED_TASKS, isLoading: false });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        set({ tasks: [], isLoading: false, error: null });
+        return;
       }
-    } catch {
-      set({ tasks: INITIAL_SEED_TASKS, isLoading: false });
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        set({ error: error.message, isLoading: false });
+        return;
+      }
+
+      const mapped = ((data as SupabaseTaskRow[]) ?? []).map(mapRowToTask);
+      set({ tasks: mapped, isLoading: false, error: null });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Gagal memuat data tugas dari cloud.';
+      set({ error: msg, isLoading: false });
     }
   },
 
+  // CREATE (INSERT) dengan Optimistic UI & rollback jika gagal
   addTask: async (taskInput) => {
-    const newTask: DailyTask = {
+    const previousTasks = get().tasks;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      set({ error: 'Sesi tidak aktif. Silakan masuk kembali.' });
+      return null;
+    }
+
+    const tempId = `temp-${generateId()}`;
+    const optimisticTask: DailyTask = {
       ...taskInput,
-      id: generateId(),
+      id: tempId,
       createdAt: Date.now(),
     };
-    const updated = [...get().tasks, newTask].sort((a, b) =>
-      a.startTime.localeCompare(b.startTime)
-    );
-    set({ tasks: updated });
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    return newTask;
+
+    set({ tasks: sortByStartTime([...previousTasks, optimisticTask]), error: null });
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([
+        {
+          user_id: user.id,
+          title: taskInput.title,
+          description: taskInput.description ?? null,
+          start_time: taskInput.startTime,
+          end_time: taskInput.endTime ?? null,
+          priority: taskInput.priority,
+          category: taskInput.category,
+          completed: taskInput.completed,
+          reminder_enabled: taskInput.reminderEnabled,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error || !data) {
+      set({
+        tasks: previousTasks,
+        error: error?.message ?? 'Gagal menyimpan tugas ke cloud.',
+      });
+      return null;
+    }
+
+    const savedTask = mapRowToTask(data as SupabaseTaskRow);
+    set({
+      tasks: sortByStartTime(
+        get().tasks.map((t) => (t.id === tempId ? savedTask : t))
+      ),
+      error: null,
+    });
+    return savedTask;
   },
 
+  // UPDATE dengan Optimistic UI & rollback jika gagal
   updateTask: async (id, updates) => {
-    const updated = get().tasks.map((task) =>
-      task.id === id ? { ...task, ...updates } : task
-    ).sort((a, b) => a.startTime.localeCompare(b.startTime));
-    set({ tasks: updated });
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  },
-
-  toggleTask: async (id) => {
-    const updated = get().tasks.map((task) =>
-      task.id === id ? { ...task, completed: !task.completed } : task
+    const previousTasks = get().tasks;
+    const updated = sortByStartTime(
+      previousTasks.map((task) =>
+        task.id === id ? { ...task, ...updates } : task
+      )
     );
-    set({ tasks: updated });
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    set({ tasks: updated, error: null });
+
+    const payload: Record<string, unknown> = {};
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.description !== undefined) payload.description = updates.description ?? null;
+    if (updates.startTime !== undefined) payload.start_time = updates.startTime;
+    if (updates.endTime !== undefined) payload.end_time = updates.endTime ?? null;
+    if (updates.priority !== undefined) payload.priority = updates.priority;
+    if (updates.category !== undefined) payload.category = updates.category;
+    if (updates.completed !== undefined) payload.completed = updates.completed;
+    if (updates.reminderEnabled !== undefined) {
+      payload.reminder_enabled = updates.reminderEnabled;
+    }
+
+    const { error } = await supabase.from('tasks').update(payload).eq('id', id);
+
+    if (error) {
+      set({ tasks: previousTasks, error: error.message });
+    }
   },
 
+  // UPDATE status selesai dengan Optimistic UI & rollback jika gagal
+  toggleTask: async (id) => {
+    const previousTasks = get().tasks;
+    const target = previousTasks.find((t) => t.id === id);
+    if (!target) return;
+
+    const nextCompleted = !target.completed;
+    set({
+      tasks: previousTasks.map((task) =>
+        task.id === id ? { ...task, completed: nextCompleted } : task
+      ),
+      error: null,
+    });
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ completed: nextCompleted })
+      .eq('id', id);
+
+    if (error) {
+      set({ tasks: previousTasks, error: error.message });
+    }
+  },
+
+  // DELETE dengan Optimistic UI & rollback jika gagal
   removeTask: async (id) => {
-    const updated = get().tasks.filter((task) => task.id !== id);
-    set({ tasks: updated });
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    const previousTasks = get().tasks;
+    set({
+      tasks: previousTasks.filter((task) => task.id !== id),
+      error: null,
+    });
+
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+
+    if (error) {
+      set({ tasks: previousTasks, error: error.message });
+    }
+  },
+
+  clearTasks: () => {
+    set({ tasks: [], isLoading: false, error: null });
   },
 }));

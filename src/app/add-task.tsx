@@ -30,15 +30,18 @@ export default function AddTaskScreen() {
   const [category, setCategory] = useState<TaskCategory>('kuliah');
   const [priority, setPriority] = useState<TaskPriority>('high');
   const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (saving) return;
     const trimmed = title.trim();
     if (!trimmed) {
       Alert.alert('Perhatian', 'Harap isi judul agenda atau nama mata kuliah.');
       return;
     }
 
-    await addTask({
+    setSaving(true);
+    const created = await addTask({
       title: trimmed,
       description: description.trim() || undefined,
       startTime,
@@ -48,6 +51,16 @@ export default function AddTaskScreen() {
       completed: false,
       reminderEnabled,
     });
+    setSaving(false);
+
+    if (!created) {
+      const latestError = useTaskStore.getState().error;
+      Alert.alert(
+        'Gagal Menyimpan ke Cloud',
+        latestError || 'Pastikan tabel tasks & RLS sudah dijalankan di Supabase.'
+      );
+      return;
+    }
 
     router.back();
   };

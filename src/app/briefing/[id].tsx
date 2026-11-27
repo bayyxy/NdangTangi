@@ -29,7 +29,7 @@ export default function TipDetailScreen() {
     setLoading(true);
     setError(null);
 
-    // Menerapkan .then() dan .catch() dari Promise (Kriteria Penilaian Modul 3 Halaman 24)
+    // Menerapkan .then() dan .catch() dari Promise 
     fetchTipDetail(id)
       .then((result) => {
         setTip(result);

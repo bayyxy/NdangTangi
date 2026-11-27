@@ -1,5 +1,5 @@
 // src/types/briefing.ts
-// Interface definitions for Modul 3 (Async & External API Call)
+// Interface definitions  (Async & External API Call)
 
 export interface WeatherCurrent {
   temperature: number;

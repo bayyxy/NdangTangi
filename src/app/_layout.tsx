@@ -1,13 +1,31 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useEffect, useRef } from 'react';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { useAlarmStore } from '../store/alarmStore';
 
-export default function RootLayout() {
+function RootLayoutNav() {
+  const { session, isLoading } = useAuth();
+  const segments = useSegments();
   const { activeAlarm, setActiveAlarm, loadAlarms } = useAlarmStore();
   const lastTriggered = useRef<string>('');
+  const wasAlarmActive = useRef<boolean>(false);
+
+  // Route Protection Guard berbasis useSegments() & status sesi global
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!session && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (session && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [session, isLoading, segments]);
 
   useEffect(() => {
     loadAlarms();
@@ -36,12 +54,26 @@ export default function RootLayout() {
   }, [loadAlarms, setActiveAlarm]);
 
   useEffect(() => {
+    if (isLoading || !session) return;
+
     if (activeAlarm) {
+      wasAlarmActive.current = true;
       router.push('/alarm-ringing');
-    } else {
-      router.replace('/');
+    } else if (wasAlarmActive.current) {
+      wasAlarmActive.current = false;
+      router.replace('/(tabs)');
     }
-  }, [activeAlarm]);
+  }, [activeAlarm, isLoading, session]);
+
+  // Perisai pemuatan saat memeriksa token dari SecureStore (mencegah flicker rute)
+  if (isLoading) {
+    return (
+      <View style={styles.splashLoading}>
+        <ActivityIndicator size="large" color="#FF5500" />
+        <Text style={styles.splashText}>Memverifikasi sesi aman...</Text>
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -84,12 +116,23 @@ export default function RootLayout() {
             name="briefing/[id]"
             options={{ title: 'Detail Kesiapan Pagi', headerBackTitle: 'Kembali' }}
           />
-          <Stack.Screen
-            name="notes"
-            options={{ title: 'Catatan Baru (Supabase)', headerBackTitle: 'Kembali' }}
-          />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  splashLoading: {
+    flex: 1,
+    backgroundColor: '#0B0C10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  splashText: {
+    color: '#8E97A8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});

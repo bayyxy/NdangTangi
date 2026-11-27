@@ -1,7 +1,7 @@
 // src/app/(tabs)/index.tsx
 // Dashboard Utama: Real-Time Clock, Alarm Bangun Pagi & Daily Task Timeline
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,11 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 import { useAlarmStore } from '../../store/alarmStore';
 import { useTaskStore } from '../../store/taskStore';
 import { Alarm } from '../../types/alarm';
@@ -47,16 +50,43 @@ function CircularProgress({ percent }: { percent: number }) {
 }
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const { alarms, activeAlarm, toggleAlarm, removeAlarm, loadAlarms } = useAlarmStore();
-  const { tasks, toggleTask, loadTasks } = useTaskStore();
+  const {
+    tasks,
+    isLoading: isLoadingTasks,
+    error: taskError,
+    toggleTask,
+    loadTasks,
+  } = useTaskStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeFilter, setActiveFilter] = useState<TaskFilter>('all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const displayName =
+    (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+    user?.email?.split('@')[0] ||
+    'Bayu Adi Nugroho';
+  const displaySubtitle = user?.email || 'Informatika UMM • Semester 5';
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w: string) => w[0])
+    .join('')
+    .toUpperCase();
 
   useEffect(() => {
     loadAlarms();
     loadTasks();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, [loadAlarms, loadTasks, user?.id]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadAlarms(), loadTasks()]);
+    setRefreshing(false);
   }, [loadAlarms, loadTasks]);
 
   useEffect(() => {
@@ -85,14 +115,25 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#FF5500"
+          colors={['#FF5500']}
+        />
+      }
+    >
       {/* Header */}
       <View style={styles.topHeader}>
         <View style={styles.userProfile}>
-          <View style={styles.avatarCircle}><Text style={styles.avatarGlyph}>BA</Text></View>
+          <View style={styles.avatarCircle}><Text style={styles.avatarGlyph}>{initials || 'NT'}</Text></View>
           <View>
-            <Text style={styles.greetingTitle}>Halo, Bayu Adi Nugroho</Text>
-            <Text style={styles.greetingSubtitle}>Informatika UMM • Semester 5</Text>
+            <Text style={styles.greetingTitle}>Halo, {displayName}</Text>
+            <Text style={styles.greetingSubtitle}>{displaySubtitle}</Text>
           </View>
         </View>
       </View>
@@ -153,6 +194,17 @@ export default function HomeScreen() {
           <Text style={styles.sectionActionText}>+ ATUR ALARM</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.sectionHeaderRow}>
+        <View>
+          <Text style={styles.sectionCategory}>Mengambil produk</Text>
+          <Text style={styles.sectionMainTitle}>mengambil produk</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/product')} activeOpacity={0.8} style={styles.sectionActionBtn}>
+          <Text style={styles.sectionActionText}>+ produk</Text>
+        </TouchableOpacity>
+      </View>
+
 
       {nextAlarm ? (
         <View style={[styles.alarmCard, nextAlarm.enabled && styles.alarmCardActive]}>
@@ -232,7 +284,24 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {filteredTasks.length === 0 ? (
+      {taskError ? (
+        <View style={styles.cloudErrorBox}>
+          <Text style={styles.cloudErrorTitle}>Sinkronisasi Cloud Terganggu</Text>
+          <Text style={styles.cloudErrorDesc}>{taskError}</Text>
+          <TouchableOpacity style={styles.cloudRetryBtn} onPress={loadTasks} activeOpacity={0.8}>
+            <Text style={styles.cloudRetryText}>Coba Muat Ulang</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {isLoadingTasks && tasks.length === 0 ? (
+        <View style={styles.emptyTaskBox}>
+          <ActivityIndicator size="small" color="#FF5500" />
+          <Text style={[styles.emptyTaskSub, { marginTop: 10 }]}>
+            Memuat agenda cloud dari Supabase...
+          </Text>
+        </View>
+      ) : filteredTasks.length === 0 ? (
         <View style={styles.emptyTaskBox}>
           <Text style={styles.emptyTaskTitle}>Tidak Ada Tugas di Kategori Ini</Text>
           <Text style={styles.emptyTaskSub}>Tekan + Tulis Tugas untuk menambahkan agenda.</Text>
@@ -339,6 +408,11 @@ const styles = StyleSheet.create({
   filterTabText: { color: '#8E97A8', fontSize: 11, fontWeight: '800' },
   filterTabTextActive: { color: '#0B0C10' },
   emptyTaskBox: { backgroundColor: '#15171E', borderWidth: 1, borderColor: '#232733', borderRadius: 16, padding: 24, alignItems: 'center' },
+  cloudErrorBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)', borderRadius: 14, padding: 14, marginBottom: 12 },
+  cloudErrorTitle: { color: '#FCA5A5', fontSize: 12, fontWeight: '800' },
+  cloudErrorDesc: { color: '#F87171', fontSize: 11, marginTop: 4, lineHeight: 16 },
+  cloudRetryBtn: { alignSelf: 'flex-start', marginTop: 10, backgroundColor: 'rgba(239,68,68,0.2)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  cloudRetryText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
   emptyTaskTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   emptyTaskSub: { color: '#8E97A8', fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 17 },
   tasksList: { gap: 10 },

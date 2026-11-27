@@ -81,13 +81,12 @@ export function validateApiStatus(status: number): Promise<string> {
 export async function fetchWeatherMalang(): Promise<WeatherCurrent> {
   const url =
     'https://api.open-meteo.com/v1/forecast?latitude=-7.98&longitude=112.63&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=Asia%2FJakarta';
-
   try {
     const response = await fetch(url);
 
-    // Validasi respons menggunakan Promise dengan .then() (Kriteria Modul 3)
+    // Validasi respons menggunakan Promise dengan .then() 
     await validateApiStatus(response.status).then((message) => {
-      // Pembuktian pemanggilan .then() sesuai rubrik modul praktikum
+      // Pembuktian pemanggilan .then() 
       if (__DEV__) {
         console.log('[BriefingService .then]:', message);
       }
