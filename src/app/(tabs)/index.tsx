@@ -195,6 +195,22 @@ export default function HomeScreen() {
         <Text style={styles.briefingArrow}>BUKA →</Text>
       </TouchableOpacity>
 
+      {/* Tombol Demo Notes Supabase */}
+      <TouchableOpacity
+        style={styles.briefingBanner}
+        onPress={() => router.push('/notes')}
+        activeOpacity={0.8}
+      >
+        <View style={styles.briefingLeft}>
+          <View style={[styles.briefingDot, { backgroundColor: '#10B981' }]} />
+          <View>
+            <Text style={[styles.briefingTag, { color: '#10B981' }]}>MODUL 4: SUPABASE DATABASE</Text>
+            <Text style={styles.briefingTitle}>Tulis Catatan Cloud (notes)</Text>
+          </View>
+        </View>
+        <Text style={[styles.briefingArrow, { color: '#10B981' }]}>BUKA →</Text>
+      </TouchableOpacity>
+
       {/* Task Section */}
       <View style={styles.sectionHeaderRow}>
         <View>
